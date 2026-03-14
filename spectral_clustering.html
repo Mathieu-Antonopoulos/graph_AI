@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spectral Partitioning & Cheeger Inequalities</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/numeric/1.2.6/numeric.min.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen p-4 md:p-8 font-sans selection:bg-blue-500 selection:text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo } = React;
+
+        // --- Graph Configuration ---
+        const NODES = 9;
+        const CLUSTERS = [
+            { id: 1, nodes: [0, 1, 2], color: '#FF5A5F' },
+            { id: 2, nodes: [3, 4, 5], color: '#007A87' },
+            { id: 3, nodes: [6, 7, 8], color: '#FFB400' }
+        ];
+
+        // Fixed layout for the raw graph visualization
+        const GRAPH_POS = [
+            { x: 0, y: 0.8 }, { x: -0.3, y: 0.4 }, { x: 0.3, y: 0.4 },        // Cluster 1
+            { x: -0.8, y: -0.4 }, { x: -0.5, y: -0.8 }, { x: -0.2, y: -0.4 }, // Cluster 2
+            { x: 0.8, y: -0.4 }, { x: 0.2, y: -0.4 }, { x: 0.5, y: -0.8 }     // Cluster 3
+        ];
+
+        const INTRA_EDGES = [
+            [0,1], [1,2], [2,0],
+            [3,4], [4,5], [5,3],
+            [6,7], [7,8], [8,6]
+        ];
+
+        const BRIDGE_EDGES = [[0,3], [3,6], [6,0]];
+
+        function SpectralDashboard() {
+            const [w, setW] = useState(0.0);
+
+            // Compute Matrices and Eigendecomposition automatically when w changes
+            const mathData = useMemo(() => {
+                let A = Array(NODES).fill(0).map(() => Array(NODES).fill(0));
+                let D = Array(NODES).fill(0);
+
+                // Add Intra-cluster edges (weight = 1)
+                INTRA_EDGES.forEach(([u, v]) => {
+                    A[u][v] = 1; A[v][u] = 1;
+                    D[u] += 1; D[v] += 1;
+                });
+
+                // Add Bridge edges (weight = w)
+                BRIDGE_EDGES.forEach(([u, v]) => {
+                    A[u][v] = w; A[v][u] = w;
+                    D[u] += w; D[v] += w;
+                });
+
+                // Build Normalized Laplacian: L = I - D^(-1/2) * A * D^(-1/2)
+                let L = Array(NODES).fill(0).map(() => Array(NODES).fill(0));
+                for (let i = 0; i < NODES; i++) {
+                    for (let j = 0; j < NODES; j++) {
+                        if (i === j) {
+                            L[i][j] = 1; // Identity diagonal
+                        } else if (A[i][j] > 0) {
+                            const sqrtDiDj = Math.sqrt(D[i] * D[j]);
+                            if (sqrtDiDj > 0) {
+                                L[i][j] = -A[i][j] / sqrtDiDj;
+                            }
+                        }
+                    }
+                }
+
+                // Compute Eigenvalues and Eigenvectors
+                try {
+                    const eig = numeric.eig(L);
+                    const evals = eig.lambda.x; 
+                    const evecs = eig.E.x; 
+                    
+                    // Sort by eigenvalue (ascending order)
+                    const indices = evals.map((val, i) => i).sort((a, b) => evals[a] - evals[b]);
+                    const sortedEvals = indices.map(i => Math.max(0, evals[i]));
+                    
+                    // Extract sorted eigenvectors by column index
+                    const v2 = Array(NODES).fill(0).map((_, i) => evecs[i][indices[1]]);
+                    const v3 = Array(NODES).fill(0).map((_, i) => evecs[i][indices[2]]);
+
+                    return { evals: sortedEvals.slice(0, 4), v2, v3 };
+                } catch (err) {
+                    console.error("Eigendecomposition error:", err);
+                    return { evals: [0, 0, 0, 0], v2: Array(NODES).fill(0), v3: Array(NODES).fill(0) };
+                }
+            }, [w]);
+
+            const { evals, v2, v3 } = mathData;
+            const getNodeColor = (idx) => CLUSTERS.find(c => c.nodes.includes(idx)).color;
+
+            return (
+                <div className="max-w-6xl mx-auto space-y-8 pb-12">
+                    
+                    {/* Header */}
+                    <div className="text-center pt-4">
+                        <h1 className="text-4xl font-extrabold mb-3 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-300">
+                            Spectral Partitioning & Cheeger Inequalities
+                        </h1>
+                        <p className="text-gray-400 text-lg">Interactive visualization of multi-way sparse cuts and the Normalized Laplacian.</p>
+                    </div>
+
+                    {/* Controls */}
+                    <div className="bg-gray-800 p-6 rounded-2xl shadow-xl flex items-center space-x-6 border border-gray-700/50">
+                        <label className="text-xl font-semibold whitespace-nowrap text-gray-200">Bridge Edge Weight (<i className="font-serif">w</i>):</label>
+                        <input 
+                            type="range" min="0" max="1" step="0.01" 
+                            value={w} 
+                            onChange={(e) => setW(parseFloat(e.target.value))}
+                            className="w-full h-3 bg-gray-900 rounded-lg appearance-none cursor-pointer border border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-2xl font-mono text-blue-400 w-16 text-right font-bold">{w.toFixed(2)}</span>
+                    </div>
+
+                    {/* Visualization Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* Panel 1: Raw Graph */}
+                        <div className="bg-gray-800 p-5 rounded-2xl shadow-xl border border-gray-700/50 flex flex-col items-center">
+                            <h2 className="text-lg font-semibold mb-4 text-gray-300">1. The Raw Network Graph</h2>
+                            <svg viewBox="-1.2 -1.2 2.4 2.4" className="w-full h-64 overflow-visible">
+                                {/* Intra Edges */}
+                                {INTRA_EDGES.map(([u, v], i) => (
+                                    <line key={`intra-${i}`} x1={GRAPH_POS[u].x} y1={GRAPH_POS[u].y} x2={GRAPH_POS[v].x} y2={GRAPH_POS[v].y} 
+                                          stroke="#4B5563" strokeWidth="0.02" />
+                                ))}
+                                {/* Bridge Edges */}
+                                {BRIDGE_EDGES.map(([u, v], i) => (
+                                    <line key={`bridge-${i}`} x1={GRAPH_POS[u].x} y1={GRAPH_POS[u].y} x2={GRAPH_POS[v].x} y2={GRAPH_POS[v].y} 
+                                          stroke="#EF4444" strokeWidth={0.01 + (w * 0.05)} strokeDasharray={w > 0.3 ? "0" : "0.05,0.05"} 
+                                          opacity={Math.max(0.1, w)} className="transition-all duration-200" />
+                                ))}
+                                {/* Nodes */}
+                                {GRAPH_POS.map((pos, i) => (
+                                    <circle key={`node-${i}`} cx={pos.x} cy={pos.y} r="0.1" fill={getNodeColor(i)} stroke="#1F2937" strokeWidth="0.02" />
+                                ))}
+                            </svg>
+                        </div>
+
+                        {/* Panel 2: Spectral Embedding */}
+                        <div className="bg-gray-800 p-5 rounded-2xl shadow-xl border border-gray-700/50 flex flex-col items-center">
+                            <h2 className="text-lg font-semibold mb-4 text-gray-300">2. Spectral Embedding (<i className="font-serif">v₂ , v₃</i>)</h2>
+                            <svg viewBox="-0.7 -0.7 1.4 1.4" className="w-full h-64 overflow-visible bg-gray-900 rounded-xl border border-gray-700/50 shadow-inner">
+                                {/* Axes */}
+                                <line x1="-0.7" y1="0" x2="0.7" y2="0" stroke="#374151" strokeWidth="0.01" strokeDasharray="0.02,0.02" />
+                                <line x1="0" y1="-0.7" x2="0" y2="0.7" stroke="#374151" strokeWidth="0.01" strokeDasharray="0.02,0.02" />
+                                
+                                {/* Embedded Nodes */}
+                                {Array.from({ length: NODES }).map((_, i) => (
+                                    <circle 
+                                        key={`embed-${i}`} cx={v2[i]} cy={v3[i]} r="0.05" 
+                                        fill={getNodeColor(i)} stroke="#1F2937" strokeWidth="0.01"
+                                        className="transition-all duration-300 ease-out"
+                                    />
+                                ))}
+                            </svg>
+                        </div>
+
+                        {/* Panel 3: Eigenvalues */}
+                        <div className="bg-gray-800 p-5 rounded-2xl shadow-xl border border-gray-700/50 flex flex-col items-center">
+                            <h2 className="text-lg font-semibold mb-4 text-gray-300">3. Laplacian Eigenvalues</h2>
+                            <div className="w-full h-64 flex items-end justify-around pb-6 relative border-b border-gray-600">
+                                {evals.map((val, i) => {
+                                    const isZero = val < 0.05;
+                                    // Scale visualization: max eigenvalue ~1.5
+                                    const barHeight = Math.max(4, (val / 1.5) * 200); 
+                                    return (
+                                        <div key={`eigen-${i}`} className="flex flex-col items-center w-1/5 group h-full justify-end">
+                                            <span className={`mb-2 font-mono text-sm transition-colors duration-300 ${isZero ? 'text-red-400 font-bold' : 'text-gray-400'}`}>
+                                                {val.toFixed(3)}
+                                            </span>
+                                            <div 
+                                                className={`w-full transition-all duration-300 rounded-t-md shadow-lg ${isZero ? 'bg-gradient-to-t from-red-600 to-red-400' : 'bg-gradient-to-t from-blue-600 to-blue-400'}`}
+                                                style={{ height: `${barHeight}px` }}
+                                            ></div>
+                                            <span className="mt-3 text-gray-400 font-serif">λ<sub>{i + 1}</sub></span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Educational Math Box */}
+                    <div className="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700/50 mt-8">
+                        <h3 className="text-2xl font-bold mb-6 text-blue-300 border-b border-gray-700 pb-4">The Mathematics Behind the Dashboard</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-gray-300 leading-relaxed">
+                            
+                            <div>
+                                <h4 className="text-xl font-semibold text-white mb-2">1. The Normalized Laplacian</h4>
+                                <p className="mb-4">
+                                    The algorithm first constructs the Normalized Laplacian Matrix: <br/>
+                                    <code className="bg-gray-900 px-2 py-1 rounded text-teal-300 font-mono text-sm block mt-2 w-max shadow-inner">L = I - D<sup>-1/2</sup> A D<sup>-1/2</sup></code>
+                                </p>
+                                <p>
+                                    This matrix acts as the "difference engine" of the graph. It mathematically calculates how much "tension" exists across the edges if you were to assign different numerical values to connected nodes.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 className="text-xl font-semibold text-white mb-2">2. Eigenvalues & Connected Components</h4>
+                                <p>
+                                    Set the slider to <code className="text-red-400 bg-gray-900 px-1 rounded">w = 0.00</code>. A fundamental rule of spectral graph theory states that the number of completely disconnected components in a graph is <strong>exactly equal</strong> to the multiplicity of the eigenvalue zero. Because the graph separates into 3 distinct islands, <span className="font-serif">λ<sub>1</sub> = λ<sub>2</sub> = λ<sub>3</sub> = 0</span>.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 className="text-xl font-semibold text-white mb-2">3. Higher-Order Cheeger Inequalities</h4>
+                                <p className="mb-4">
+                                    Move the slider to <code className="text-red-400 bg-gray-900 px-1 rounded">w = 0.05</code>. The paper proves Miclo's Conjecture: a graph has <span className="italic">k</span> eigenvalues <em>close to zero</em> if and only if the graph can be partitioned into <span className="italic">k</span> distinct subsets separated by "sparse cuts" (bottlenecks).
+                                </p>
+                                <p>
+                                    The paper establishes the definitive mathematical bound: 
+                                    <code className="bg-gray-900 px-2 py-1 rounded text-teal-300 font-mono text-sm block mt-2 w-max shadow-inner">λ<sub>k</sub> / 2  ≤  ρ<sub>G</sub>(k)  ≤  O(k²)√λ<sub>k</sub></code>
+                                </p>
+                            </div>
+
+                            <div>
+                                <h4 className="text-xl font-semibold text-white mb-2">4. The Spectral Embedding Map</h4>
+                                <p>
+                                    To find the clusters, we use the eigenvectors (<span className="font-serif">v<sub>2</sub>, v<sub>3</sub></span>) as coordinates in physical space. Because these vectors inherently minimize the mathematical tension across edges, nodes that are tightly connected in the messy raw graph are forced to overlap in the geometric map. As you increase <span className="font-serif">w</span>, the clusters bleed together, and the geometric map naturally spreads out into a uniform blob.
+                                </p>
+                            </div>
+
+                        </div>
+                    </div>
+
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<SpectralDashboard />);
+    </script>
+</body>
+</html>
