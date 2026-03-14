@@ -82,15 +82,15 @@
                 try {
                     const eig = numeric.eig(L);
                     const evals = eig.lambda.x; 
-                    const evecs = eig.E.x; 
+                    const evecs = eig.E.x; // Raw eigenvectors (g_i)
                     
                     // Sort by eigenvalue (ascending order)
                     const indices = evals.map((val, i) => i).sort((a, b) => evals[a] - evals[b]);
                     const sortedEvals = indices.map(i => Math.max(0, evals[i]));
                     
-                    // Extract sorted eigenvectors by column index
-                    const v2 = Array(NODES).fill(0).map((_, i) => evecs[i][indices[1]]);
-                    const v3 = Array(NODES).fill(0).map((_, i) => evecs[i][indices[2]]);
+                    // PAPER CORRECTION: Scale by D^(-1/2) to get right eigenvectors of the random walk matrix (f_i)
+                    const v2 = Array(NODES).fill(0).map((_, i) => evecs[i][indices[1]] / Math.sqrt(D[i]));
+                    const v3 = Array(NODES).fill(0).map((_, i) => evecs[i][indices[2]] / Math.sqrt(D[i]));
 
                     return { evals: sortedEvals.slice(0, 4), v2, v3 };
                 } catch (err) {
@@ -193,52 +193,6 @@
                             </div>
                         </div>
                     </div>
-
-                    {/* Educational Math Box */}
-                    <div className="bg-gray-800 p-8 rounded-2xl shadow-xl border border-gray-700/50 mt-8">
-                        <h3 className="text-2xl font-bold mb-6 text-blue-300 border-b border-gray-700 pb-4">The Mathematics Behind the Dashboard</h3>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-gray-300 leading-relaxed">
-                            
-                            <div>
-                                <h4 className="text-xl font-semibold text-white mb-2">1. The Normalized Laplacian</h4>
-                                <p className="mb-4">
-                                    The algorithm first constructs the Normalized Laplacian Matrix: <br/>
-                                    <code className="bg-gray-900 px-2 py-1 rounded text-teal-300 font-mono text-sm block mt-2 w-max shadow-inner">L = I - D<sup>-1/2</sup> A D<sup>-1/2</sup></code>
-                                </p>
-                                <p>
-                                    This matrix acts as the "difference engine" of the graph. It mathematically calculates how much "tension" exists across the edges if you were to assign different numerical values to connected nodes.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 className="text-xl font-semibold text-white mb-2">2. Eigenvalues & Connected Components</h4>
-                                <p>
-                                    Set the slider to <code className="text-red-400 bg-gray-900 px-1 rounded">w = 0.00</code>. A fundamental rule of spectral graph theory states that the number of completely disconnected components in a graph is <strong>exactly equal</strong> to the multiplicity of the eigenvalue zero. Because the graph separates into 3 distinct islands, <span className="font-serif">λ<sub>1</sub> = λ<sub>2</sub> = λ<sub>3</sub> = 0</span>.
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 className="text-xl font-semibold text-white mb-2">3. Higher-Order Cheeger Inequalities</h4>
-                                <p className="mb-4">
-                                    Move the slider to <code className="text-red-400 bg-gray-900 px-1 rounded">w = 0.05</code>. The paper proves Miclo's Conjecture: a graph has <span className="italic">k</span> eigenvalues <em>close to zero</em> if and only if the graph can be partitioned into <span className="italic">k</span> distinct subsets separated by "sparse cuts" (bottlenecks).
-                                </p>
-                                <p>
-                                    The paper establishes the definitive mathematical bound: 
-                                    <code className="bg-gray-900 px-2 py-1 rounded text-teal-300 font-mono text-sm block mt-2 w-max shadow-inner">λ<sub>k</sub> / 2  ≤  ρ<sub>G</sub>(k)  ≤  O(k²)√λ<sub>k</sub></code>
-                                </p>
-                            </div>
-
-                            <div>
-                                <h4 className="text-xl font-semibold text-white mb-2">4. The Spectral Embedding Map</h4>
-                                <p>
-                                    To find the clusters, we use the eigenvectors (<span className="font-serif">v<sub>2</sub>, v<sub>3</sub></span>) as coordinates in physical space. Because these vectors inherently minimize the mathematical tension across edges, nodes that are tightly connected in the messy raw graph are forced to overlap in the geometric map. As you increase <span className="font-serif">w</span>, the clusters bleed together, and the geometric map naturally spreads out into a uniform blob.
-                                </p>
-                            </div>
-
-                        </div>
-                    </div>
-
                 </div>
             );
         }
