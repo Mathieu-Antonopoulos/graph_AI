@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Graph Heat Diffusion</title>
+
+    <link rel="stylesheet" href="css/global.css">
+    <link rel="stylesheet" href="css/diffusion.css">
+
+    <script src="js/toolbox/toolbox.bundle.js"></script>
+    <script src="js/d3.v7.min.js"></script>
+    <script src="js/message.js"></script>
+    <script src="js/interface.js"></script>
+    <script src="js/diffusion_app.js"></script>
+
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre'] // On retire 'code' de cette liste si besoin, mais mieux vaut utiliser des div
+            }
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+    <main>
+        <h1 class="title">Graph Heat Diffusion</h1>
+
+        <div class="controls">
+            Time
+            <input id="time-slider" type="range" min="0" max="400" value="0">
+            <span id="time-value">0</span>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2>Temperature</h2>
+                <div id="graph-temp"></div>
+            </div>
+
+            <div class="panel">
+                <h2>Laplacian (Local Imbalance)</h2>
+                <div id="graph-lap"></div>
+            </div>
+
+            <div class="panel">
+                <h2>Laplacian Matrix</h2>
+                <div id="laplacian-matrix"></div>
+            </div>
+
+            <div class="panel">
+                <h2>Temperature dynamics</h2>
+                <div id="phase"></div>
+            </div>
+        </div>
+
+        <div id="theory-panel" style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 8px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; border: 1px solid #e1e4e8;">
+            <h3 style="margin-top: 0; color: #2d3436;">How Diffusion Works</h3>
+            
+            <p>The heat variation at each node follows the <b>Discrete Laplace Equation</b>:</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                $$\frac{dT}{dt} = -\alpha \mathbf{L} T$$
+            </div>
+
+            <p>The Laplacian matrix $\mathbf{L}$ is defined as $\mathbf{D} - \mathbf{A}$. It computes the <b>local energy balance</b> for each node $i$:</p>
+
+            <div style="background: white; padding: 20px; border-left: 4px solid #d63031; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="font-size: 1.2em; margin-bottom: 15px; text-align: center;">
+                    $$(LT)_i = \underbrace{d_i T_i}_{\text{Outgoing}} - \underbrace{\sum_{j \sim i} T_j}_{\text{Incoming}}$$
+                </div>
+                <ul style="margin: 0; padding-left: 20px; font-size: 0.95em; color: #2d3436; line-height: 1.6;">
+                    <li><span style="color: #e67e22; font-weight: bold;">Outgoing ($D$):</span> The node distributes its heat to its $d_i$ neighbors.</li>
+                    <li><span style="color: #d63031; font-weight: bold;">Incoming ($-A$):</span> The node absorbs heat from its connected neighbors.</li>
+                </ul>
+
+                <p>Where $T$ is the <b>temperature vector</b> containing the state of all nodes at time $t$:</p>
+
+                <div style="text-align: center; margin: 15px 0;">
+                    $$T(t) = \begin{bmatrix} T_1 \\ T_2 \\ \vdots \\ T_n \end{bmatrix}$$
+                </div>
+
+                <p style="font-size: 0.9em;">Each component $T_i$ represents the temperature of a specific room or outdoor area (Kitchen, Garden, etc.).</p>
+            </div>
+
+            <p style="margin-top: 15px; font-size: 0.9em; color: #636e72; font-style: italic;">
+                Note: If $(LT)_i$ is positive, the node is hotter than its neighbors' average and will cool down (since the update is $-\alpha LT$).
+            </p>
+        </div>
+    </main>
+
+    <script>
+        async function __init__() {
+            await wait_for_socket_ready()
+            init_diffusion()
+        }
+        __init__()
+    </script>
+</body>
+</html>
