@@ -44,11 +44,11 @@ window.MathJax = {
             <h2>Graph</h2>
             <div id="graph"></div>
         </div>
-
+<!-- 
         <div class="panel">
             <h2>Spectral Embedding (v₂,v₃)</h2>
             <div id="embedding"></div>
-        </div>
+        </div> -->
 
         <div class="panel">
             <h2>Laplacian Eigenvalues</h2>
@@ -65,7 +65,7 @@ window.MathJax = {
             <div id="eigenvector-heatmap"></div>
         </div>
 
-        <div class="panel">
+        <div class="panel cheeger-panel">
             <h3>Cheeger Sweep</h3>
 
             <div id="cheeger-formula">
@@ -77,9 +77,10 @@ window.MathJax = {
 
             <input type="range" id="cheeger-slider">
 
-            <svg id="cheeger-graph" width="320" height="240"></svg>
-
-            <svg id="cheeger-curve" width="320" height="200"></svg>
+            <div id="cheeger-charts">
+                <svg id="cheeger-graph" width="320" height="240"></svg>
+                <svg id="cheeger-curve" width="320" height="200"></svg>
+            </div>
         </div>
 
     </div>

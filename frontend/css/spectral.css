@@ -27,6 +27,18 @@ body{
     border:1px solid #ddd;
     border-radius:6px;
     padding:15px;
+    display:flex;
+    flex-direction:column;
+}
+
+.panel h2, .panel h3{
+    margin-top:0;
+}
+
+.cheeger-panel{
+    grid-column: span 2;
+    display:flex;
+    flex-direction:column;
 }
 
 .panel h2{
@@ -48,28 +60,52 @@ svg{
 }
 
 #cheeger-formula{
-    display:flex;
-    flex-direction:column;
+    display:grid;
+    grid-template-columns: 1fr 1fr 1fr;
     gap:12px;
     margin-bottom:20px;
+    align-items:start;
 }
 
 .cheeger-box{
-    background:#f7f7f7;
-    border:1px solid #ddd;
-    border-radius:8px;
-    padding:10px 14px;
+    background:linear-gradient(135deg, #f9f9f9 0%, #f0f0f0 100%);
+    border:1px solid #e0e0e0;
+    border-radius:10px;
+    padding:10px 12px;
     font-family: "Times New Roman", serif;
-    font-size:16px;
+    font-size:12px;
+    line-height:1.3;
+    box-shadow:0 2px 4px rgba(0,0,0,0.05);
+    transition:all 0.3s ease;
+    min-height:100%;
+}
+
+.cheeger-box:hover{
+    box-shadow:0 4px 8px rgba(0,0,0,0.1);
+    border-color:#d0d0d0;
 }
 
 .cheeger-result{
-    background:#eef6ff;
+    background:linear-gradient(135deg, #e8f4ff 0%, #d4e9ff 100%);
     border:2px solid #4a90e2;
-    border-radius:8px;
-    padding:12px;
-    font-size:18px;
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:13px;
     font-weight:600;
+    grid-column: 1 / -1;
+    box-shadow:0 3px 8px rgba(74,144,226,0.15);
+}
+
+#cheeger-charts{
+    display:flex;
+    gap:15px;
+    margin-top:15px;
+}
+
+#cheeger-graph, #cheeger-curve{
+    flex:1;
+    width:100%;
+    height:240px;
 }
 
 #fiedler-line {
@@ -78,4 +114,18 @@ svg{
     background: #fdfdfd; /* Juste pour vérifier qu'il est là */
     margin-top: 10px;
     border-radius: 4px;
+}
+
+#eigenvector-heatmap{
+    width:100%;
+    flex:1;
+    display:flex;
+    align-items:stretch;
+    justify-content:stretch;
+    min-height:300px;
+}
+
+#eigenvector-heatmap svg, #eigenvector-heatmap canvas{
+    width:100% !important;
+    height:100% !important;
 }
