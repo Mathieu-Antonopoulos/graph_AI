@@ -65,6 +65,8 @@ class Server:
 
         await self.send_diffusion()
 
+        await self.send_spec_embedding() # Ajout ici
+
 
     # =========================
     # SPECTRAL DEMO
@@ -163,6 +165,41 @@ class Server:
 
         await self.socket.broadcast(
             Message(payload, type="diffusion-update")
+        )
+
+    # =========================
+    # SPECTRAL EMBEDDING DEMO
+    # =========================
+
+    async def send_spec_embedding(self):
+        """
+        Calcule l'embedding (v2, v3) et les données nécessaires au Sweep Cut
+        """
+        A = self.graph.adjacency()
+        G = nx.from_numpy_array(A)
+        
+        # Récupération des valeurs et vecteurs propres
+        eigvals, eigvecs = spectral_embedding(A)
+
+        # Calcul des degrés pour le calcul de la conductance côté client
+        degrees = [val for (node, val) in G.degree()]
+
+        payload = {
+            "graph": {
+                "nodes": self.graph.nodes(),
+                "edges": self.graph.edges(),
+                "degrees": degrees
+            },
+            "spectral": {
+                "eigenvalues": eigvals.tolist(),
+                "embedding": eigvecs[1:3, :].T.tolist(), # v2 et v3
+                "eigenvectors": eigvecs.tolist()         # Tous les vecteurs
+            },
+            "weight": self.graph.w
+        }
+
+        await self.socket.broadcast(
+            Message(payload, type="embedding-update")
         )
     # =========================
     # CONNECTED COMPONENTS
